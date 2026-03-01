@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BookSwap — Trade Books, Share Stories</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f0d0a;
+  --surface: #1a1612;
+  --surface2: #221e18;
+  --surface3: #2c2720;
+  --border: rgba(210,175,120,0.15);
+  --border2: rgba(210,175,120,0.25);
+  --amber: #d4a853;
+  --amber-light: #e8c57a;
+  --amber-dim: rgba(212,168,83,0.12);
+  --text: #e8e0d0;
+  --text-dim: #9a8f7e;
+  --text-faint: #5a5248;
+  --red: #c0392b;
+  --green: #27ae60;
+  --shadow: rgba(0,0,0,0.5);
+  --radius: 8px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grain overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.4;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--amber); border-radius: 3px; }
+
+/* ── TOASTS ── */
+#toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  box-shadow: 0 8px 32px var(--shadow);
+  animation: slideToast 0.3s ease;
+  max-width: 280px;
+}
+.toast.success { border-color: rgba(39,174,96,0.4); color: #6fcf97; }
+.toast.error   { border-color: rgba(192,57,43,0.4); color: #eb5757; }
+
+@keyframes slideToast {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── PAGES ── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── AUTH PAGE ── */
+#auth-page {
+  min-height: 100vh;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 30% 50%, rgba(212,168,83,0.06) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 20%, rgba(140,80,20,0.08) 0%, transparent 50%);
+}
+#auth-page.active { display: flex; }
+
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  animation: fadeUp 0.5s ease;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.auth-logo {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.auth-logo .logo-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.auth-logo h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--amber);
+  letter-spacing: -0.5px;
+}
+
+.auth-logo p {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 3px;
+  margin-bottom: 28px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.auth-tab.active {
+  background: var(--amber);
+  color: var(--bg);
+}
+
+.form-group { margin-bottom: 16px; }
+
+.form-group label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.form-control:focus {
+  border-color: var(--amber);
+  background: var(--surface3);
+}
+
+.form-control::placeholder { color: var(--text-faint); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--amber);
+  color: var(--bg);
+  width: 100%;
+}
+.btn-primary:hover { background: var(--amber-light); transform: translateY(-1px); }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text);
+}
+.btn-ghost:hover { border-color: var(--amber); color: var(--amber); }
+
+.btn-danger {
+  background: rgba(192,57,43,0.15);
+  border: 1px solid rgba(192,57,43,0.3);
+  color: #eb5757;
+}
+.btn-danger:hover { background: rgba(192,57,43,0.25); }
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 0.8rem;
+}
+
+/* ── MAIN APP ── */
+#app-page {
+  display: none;
+  flex-direction: column;
+  min-height: 100vh;
+}
+#app-page.active { display: flex; }
+
+/* ── NAVBAR ── */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(15,13,10,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-tab {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-tab:hover { color: var(--text); background: var(--surface2); }
+.nav-tab.active { background: var(--amber-dim); color: var(--amber); }
+
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── MAIN CONTENT ── */
+.main-content {
+  flex: 1;
+  padding: 32px 24px;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ── SECTIONS ── */
+.section { display: none; }
+.section.active { display: block; }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.section-title span {
+  color: var(--amber);
+}
+
+/* ── BOOK GRID ── */
+.books-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.book-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: all 0.25s;
+  cursor: pointer;
+  position: relative;
+}
+
+.book-card:hover {
+  border-color: var(--border2);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+
+.book-cover {
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.book-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.5) 100%);
+}
+
+.book-genre-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber-light);
+}
+
+.book-info { padding: 16px; }
+
+.book-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+.book-author {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.book-owner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.owner-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.book-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-top: 6px;
+}
+
+.status-available { background: rgba(39,174,96,0.15); color: #6fcf97; border: 1px solid rgba(39,174,96,0.2); }
+.status-traded    { background: rgba(192,57,43,0.15);  color: #eb5757; border: 1px solid rgba(192,57,43,0.2); }
+.status-pending   { background: rgba(212,168,83,0.15); color: var(--amber); border: 1px solid rgba(212,168,83,0.2); }
+
+/* ── MY BOOKS ── */
+.my-books-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.trade-requests-section {
+  margin-top: 40px;
+}
+
+.trade-request-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: border-color 0.2s;
+}
+
+.trade-request-card:hover { border-color: var(--border2); }
+
+.trade-book-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.trade-book-emoji { font-size: 1.8rem; }
+
+.trade-book-details .ttl {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.trade-book-details .sub {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.trade-arrow {
+  font-size: 1.2rem;
+  color: var(--amber);
+  flex-shrink: 0;
+}
+
+.trade-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* ── TRADE HISTORY ── */
+.trade-history-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 12px;
+}
+
+.trade-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.trade-completed-badge {
+  background: rgba(39,174,96,0.15);
+  color: #6fcf97;
+  border: 1px solid rgba(39,174,96,0.2);
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.stars-display {
+  display: flex;
+  gap: 3px;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: transform 0.15s;
+  filter: grayscale(1) opacity(0.4);
+}
+.star-btn:hover { transform: scale(1.2); filter: none; }
+.star-btn.filled { filter: none; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 36px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+  animation: modalIn 0.3s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: var(--amber);
+}
+
+.modal-footer {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+  justify-content: flex-end;
+}
+
+/* ── PROFILE ── */
+.profile-hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.profile-avatar-big {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 3px solid var(--surface3);
+}
+
+.profile-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.profile-stats {
+  display: flex;
+  gap: 24px;
+  margin-top: 8px;
+}
+
+.profile-stat {
+  text-align: center;
+}
+
+.profile-stat .num {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--amber);
+  font-family: 'Cormorant Garamond', serif;
+}
+
+.profile-stat .lbl {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ── BROWSE FILTERS ── */
+.filters-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 9px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.88rem;
+  outline: none;
+}
+.filter-input:focus { border-color: var(--amber); }
+.filter-input::placeholder { color: var(--text-faint); }
+
+.filter-select {
+  padding: 9px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.88rem;
+  outline: none;
+  cursor: pointer;
+}
+.filter-select:focus { border-color: var(--amber); }
+.filter-select option { background: var(--surface2); }
+
+/* ── BOOK DETAIL MODAL ── */
+.book-detail-cover {
+  font-size: 5rem;
+  text-align: center;
+  padding: 24px;
+  background: var(--surface2);
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.offer-book-picker {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.offer-book-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+}
+.offer-book-option:hover { background: var(--surface3); }
+.offer-book-option.selected { border-color: var(--amber); background: var(--amber-dim); }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-faint);
+}
+
+.empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+.empty-state p { font-size: 0.9rem; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 640px) {
+  .nav-tabs { display: none; }
+  .books-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .profile-hero { flex-direction: column; text-align: center; }
+  .profile-stats { justify-content: center; }
+  .main-content { padding: 20px 16px; }
+  .auth-card { padding: 32px 24px; }
+}
+
+/* Notifications dot */
+.notif-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: var(--red);
+  border-radius: 50%;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+textarea.form-control { resize: vertical; min-height: 80px; }
+</style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<!-- ── AUTH PAGE ── -->
+<div id="auth-page" class="page active">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-icon">📚</div>
+      <h1>BookSwap</h1>
+      <p>Trade books, share stories</p>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-form">
+      <div class="form-group">
+        <label>Username</label>
+        <input id="login-username" class="form-control" type="text" placeholder="e.g. bookworm42" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input id="login-password" class="form-control" type="password" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="doLogin()">Sign In →</button>
+      <p style="text-align:center;font-size:0.78rem;color:var(--text-faint);margin-top:16px">
+        Demo: <strong style="color:var(--amber)">alice</strong> / <strong style="color:var(--amber)">pass</strong>
+      </p>
+    </div>
+
+    <!-- Register Form -->
+    <div id="register-form" style="display:none">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input id="reg-name" class="form-control" type="text" placeholder="e.g. Alice Chen" />
+      </div>
+      <div class="form-group">
+        <label>Username</label>
+        <input id="reg-username" class="form-control" type="text" placeholder="e.g. bookworm42" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input id="reg-password" class="form-control" type="password" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="doRegister()">Create Account →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="app-page" class="page">
+  <nav class="navbar">
+    <div class="nav-logo">📚 BookSwap</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showSection('browse')">Browse</button>
+      <button class="nav-tab" onclick="showSection('my-books')">My Books <span id="requests-dot" class="notif-dot" style="display:none"></span></button>
+      <button class="nav-tab" onclick="showSection('trades')">Trades</button>
+      <button class="nav-tab" onclick="showSection('profile')">Profile</button>
+    </div>
+    <div class="nav-user">
+      <span style="font-size:0.85rem;color:var(--text-dim)" id="nav-username"></span>
+      <div class="nav-avatar" id="nav-avatar" onclick="showSection('profile')"></div>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Out</button>
+    </div>
+  </nav>
+
+  <div class="main-content">
+
+    <!-- ── BROWSE SECTION ── -->
+    <div id="section-browse" class="section active">
+      <div class="section-header">
+        <h2 class="section-title">Browse <span>Books</span></h2>
+      </div>
+      <div class="filters-bar">
+        <input id="search-input" class="filter-input" type="text" placeholder="🔍  Search by title or author…" oninput="renderBrowse()" />
+        <select id="genre-filter" class="filter-select" onchange="renderBrowse()">
+          <option value="">All Genres</option>
+          <option>Fiction</option>
+          <option>Non-Fiction</option>
+          <option>Mystery</option>
+          <option>Science Fiction</option>
+          <option>Fantasy</option>
+          <option>Romance</option>
+          <option>History</option>
+          <option>Self-Help</option>
+        </select>
+        <select id="status-filter" class="filter-select" onchange="renderBrowse()">
+          <option value="">All Status</option>
+          <option value="available">Available</option>
+          <option value="traded">Traded</option>
+        </select>
+      </div>
+      <div id="browse-grid" class="books-grid"></div>
+    </div>
+
+    <!-- ── MY BOOKS SECTION ── -->
+    <div id="section-my-books" class="section">
+      <div class="section-header">
+        <h2 class="section-title">My <span>Books</span></h2>
+        <button class="btn btn-primary btn-sm" onclick="openAddBookModal()">+ Add Book</button>
+      </div>
+      <div id="my-books-grid" class="books-grid"></div>
+
+      <div class="trade-requests-section">
+        <div class="section-header" style="margin-bottom:16px">
+          <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:600">Incoming Trade Requests</h3>
+        </div>
+        <div id="trade-requests-list"></div>
+      </div>
+    </div>
+
+    <!-- ── TRADES SECTION ── -->
+    <div id="section-trades" class="section">
+      <div class="section-header">
+        <h2 class="section-title">Trade <span>History</span></h2>
+      </div>
+      <div id="trades-list"></div>
+    </div>
+
+    <!-- ── PROFILE SECTION ── -->
+    <div id="section-profile" class="section">
+      <div id="profile-content"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── BOOK DETAIL MODAL ── -->
+<div id="book-detail-modal" class="modal-overlay">
+  <div class="modal">
+    <div id="book-detail-content"></div>
+    <div class="modal-footer" id="book-detail-footer"></div>
+  </div>
+</div>
+
+<!-- ── ADD BOOK MODAL ── -->
+<div id="add-book-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">📖 List a Book</div>
+    <div class="form-group">
+      <label>Title *</label>
+      <input id="book-title" class="form-control" type="text" placeholder="e.g. The Midnight Library" />
+    </div>
+    <div class="form-group">
+      <label>Author *</label>
+      <input id="book-author" class="form-control" type="text" placeholder="e.g. Matt Haig" />
+    </div>
+    <div class="form-group">
+      <label>Genre</label>
+      <select id="book-genre" class="form-control filter-select" style="width:100%;padding:11px 14px">
+        <option value="Fiction">Fiction</option>
+        <option value="Non-Fiction">Non-Fiction</option>
+        <option value="Mystery">Mystery</option>
+        <option value="Science Fiction">Science Fiction</option>
+        <option value="Fantasy">Fantasy</option>
+        <option value="Romance">Romance</option>
+        <option value="History">History</option>
+        <option value="Self-Help">Self-Help</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Condition</label>
+      <select id="book-condition" class="form-control filter-select" style="width:100%;padding:11px 14px">
+        <option>Like New</option>
+        <option>Good</option>
+        <option>Fair</option>
+        <option>Well Read</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="book-desc" class="form-control" placeholder="Tell others about this book…"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add-book-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="doAddBook()">List Book</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── RATE USER MODAL ── -->
+<div id="rate-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="rate-modal-title">⭐ Rate this trade</div>
+    <p style="color:var(--text-dim);font-size:0.9rem;margin-bottom:20px">How was your trading experience?</p>
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px" id="rate-stars">
+      <button class="star-btn" data-v="1" onclick="setRating(1)">⭐</button>
+      <button class="star-btn" data-v="2" onclick="setRating(2)">⭐</button>
+      <button class="star-btn" data-v="3" onclick="setRating(3)">⭐</button>
+      <button class="star-btn" data-v="4" onclick="setRating(4)">⭐</button>
+      <button class="star-btn" data-v="5" onclick="setRating(5)">⭐</button>
+    </div>
+    <div class="form-group">
+      <label>Leave a note (optional)</label>
+      <textarea id="rate-note" class="form-control" placeholder="Great trade, very communicative…"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('rate-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitRating()">Submit Rating</button>
+    </div>
+  </div>
+</div>
+
+<script>
+//  DATABASE (in-memory)
+
+const DB = {
+  users: {
+    alice: { id:'alice', name:'Alice Chen',  password:'pass', joined:'Jan 2026' },
+    bob:   { id:'bob',   name:'Bob Marley',  password:'pass', joined:'Feb 2026' },
+    cara:  { id:'cara',  name:'Cara Delevinge', password:'pass', joined:'Mar 2026' },
+  },
+  books: [
+    { id:'b1', owner:'bob',   title:'The Midnight Library',   author:'Matt Haig',          genre:'Fiction',        condition:'Like New', emoji:'🌙', desc:'A dazzling novel about second chances.', status:'available' },
+    { id:'b2', owner:'bob',   title:'Dune',                   author:'Frank Herbert',       genre:'Science Fiction', condition:'Good',     emoji:'🏜️', desc:'Epic tale of politics and survival on a desert planet.', status:'available' },
+    { id:'b3', owner:'cara',  title:'Atomic Habits',          author:'James Clear',         genre:'Self-Help',      condition:'Like New', emoji:'⚛️', desc:'Tiny changes, remarkable results.', status:'available' },
+    { id:'b4', owner:'cara',  title:'The Name of the Wind',   author:'Patrick Rothfuss',    genre:'Fantasy',        condition:'Good',     emoji:'🎵', desc:'Day one of the Kingkiller Chronicle.', status:'available' },
+    { id:'b5', owner:'alice', title:'Sapiens',                author:'Yuval Noah Harari',   genre:'History',        condition:'Good',     emoji:'🦴', desc:'A brief history of humankind.', status:'available' },
+    { id:'b6', owner:'bob',   title:'Gone Girl',              author:'Gillian Flynn',       genre:'Mystery',        condition:'Fair',     emoji:'🔪', desc:'A psychological thriller masterpiece.', status:'available' },
+    { id:'b7', owner:'cara',  title:'The Alchemist',          author:'Paulo Coelho',        genre:'Fiction',        condition:'Like New', emoji:'✨', desc:'A journey of self-discovery.', status:'available' },
+    { id:'b8', owner:'alice', title:'Neuromancer',            author:'William Gibson',      genre:'Science Fiction', condition:'Well Read',emoji:'🤖', desc:'Pioneer of cyberpunk fiction.', status:'available' },
+  ],
+  tradeRequests: [
+    // { id, fromUser, toUser, offeredBookId, wantedBookId, status:'pending'/'accepted'/'rejected' }
+  ],
+  trades: [
+    // completed trades
+  ],
+  ratings: [
+    // { tradeId, ratedBy, ratedUser, stars, note }
+  ],
+  nextBookId: 9,
+  nextTradeId: 1,
+};
+
+let currentUser = null;
+let pendingRateTrade = null;
+let pendingRating = 0;
+let pendingOfferBookId = null;
+
+//  HELPERS
+
+function toast(msg, type='') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+
+function initials(name) {
+  return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+
+function avgRating(userId) {
+  const r = DB.ratings.filter(x => x.ratedUser === userId);
+  if (!r.length) return null;
+  return (r.reduce((a,b) => a + b.stars, 0) / r.length).toFixed(1);
+}
+
+function userTrades(userId) {
+  return DB.trades.filter(t => t.userA === userId || t.userB === userId);
+}
+
+function myBooks(userId) {
+  return DB.books.filter(b => b.owner === userId);
+}
+
+function starsHTML(n, max=5) {
+  let h = '';
+  for (let i=1;i<=max;i++) h += `<span style="filter:${i<=n?'none':'grayscale(1) opacity(0.3)'};font-size:0.9rem">⭐</span>`;
+  return h;
+}
+
+//  AUTH
+
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((el,i) => {
+    el.classList.toggle('active', (tab==='login'&&i===0)||(tab==='register'&&i===1));
+  });
+  document.getElementById('login-form').style.display    = tab==='login'    ? '' : 'none';
+  document.getElementById('register-form').style.display = tab==='register' ? '' : 'none';
+}
+
+function doLogin() {
+  const u = document.getElementById('login-username').value.trim().toLowerCase();
+  const p = document.getElementById('login-password').value;
+  const user = DB.users[u];
+  if (!user || user.password !== p) { toast('Invalid credentials', 'error'); return; }
+  loginAs(user);
+}
+
+function doRegister() {
+  const name = document.getElementById('reg-name').value.trim();
+  const u    = document.getElementById('reg-username').value.trim().toLowerCase();
+  const p    = document.getElementById('reg-password').value;
+  if (!name||!u||!p) { toast('Please fill all fields', 'error'); return; }
+  if (DB.users[u]) { toast('Username taken', 'error'); return; }
+  DB.users[u] = { id:u, name, password:p, joined:'Mar 2026' };
+  loginAs(DB.users[u]);
+  toast('Account created! Welcome 🎉', 'success');
+}
+
+function loginAs(user) {
+  currentUser = user;
+  document.getElementById('auth-page').classList.remove('active');
+  document.getElementById('app-page').classList.add('active');
+  document.getElementById('nav-username').textContent = user.name;
+  document.getElementById('nav-avatar').textContent = initials(user.name);
+  showSection('browse');
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('app-page').classList.remove('active');
+  document.getElementById('auth-page').classList.add('active');
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+}
+
+//  NAVIGATION
+
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  const idx = ['browse','my-books','trades','profile'].indexOf(name);
+  document.querySelectorAll('.nav-tab')[idx]?.classList.add('active');
+
+  if (name==='browse')   renderBrowse();
+  if (name==='my-books') renderMyBooks();
+  if (name==='trades')   renderTrades();
+  if (name==='profile')  renderProfile();
+}
+
+//  BROWSE
+
+function renderBrowse() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const genre  = document.getElementById('genre-filter').value;
+  const status = document.getElementById('status-filter').value;
+
+  let books = DB.books.filter(b => b.owner !== currentUser.id);
+  if (search) books = books.filter(b => b.title.toLowerCase().includes(search) || b.author.toLowerCase().includes(search));
+  if (genre)  books = books.filter(b => b.genre === genre);
+  if (status) books = books.filter(b => b.status === status);
+
+  const grid = document.getElementById('browse-grid');
+  if (!books.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>No books match your search.</p></div>';
+    return;
+  }
+
+  grid.innerHTML = books.map(b => {
+    const owner = DB.users[b.owner];
+    const rating = avgRating(b.owner);
+    return `
+      <div class="book-card" onclick="openBookDetail('${b.id}')">
+        <div class="book-cover" style="background:${coverBg(b.genre)}">
+          ${b.emoji}
+          <div class="book-genre-badge">${b.genre}</div>
+        </div>
+        <div class="book-info">
+          <div class="book-title">${b.title}</div>
+          <div class="book-author">${b.author}</div>
+          <div class="book-status status-${b.status}">${b.status.charAt(0).toUpperCase()+b.status.slice(1)}</div>
+          <div class="book-owner" style="margin-top:10px">
+            <div class="owner-avatar">${initials(owner.name)}</div>
+            ${owner.name}
+            ${rating ? `<span style="margin-left:auto;font-size:0.75rem;color:var(--amber)">⭐ ${rating}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function coverBg(genre) {
+  const map = {
+    'Fiction':'linear-gradient(135deg,#1a2a4a,#0d1b2e)',
+    'Science Fiction':'linear-gradient(135deg,#0d2b2b,#0a1a20)',
+    'Fantasy':'linear-gradient(135deg,#1e1a2e,#2a1a3e)',
+    'Mystery':'linear-gradient(135deg,#1a1a1a,#2e1e1e)',
+    'Romance':'linear-gradient(135deg,#2e1a20,#1e0f14)',
+    'History':'linear-gradient(135deg,#2a1e0a,#1a1206)',
+    'Self-Help':'linear-gradient(135deg,#0a2a1a,#061a10)',
+    'Non-Fiction':'linear-gradient(135deg,#1a1e2a,#10121a)',
+  };
+  return map[genre] || 'linear-gradient(135deg,#1a1612,#0f0d0a)';
+}
+
+//  BOOK DETAIL
+
+function openBookDetail(bookId) {
+  const book = DB.books.find(b => b.id === bookId);
+  if (!book) return;
+  const owner = DB.users[book.owner];
+  const rating = avgRating(owner.id);
+  const isOwnBook = book.owner === currentUser.id;
+  const myAvailBooks = myBooks(currentUser.id).filter(b => b.status === 'available');
+
+  const content = document.getElementById('book-detail-content');
+  content.innerHTML = `
+    <div class="book-detail-cover" style="background:${coverBg(book.genre)}">${book.emoji}</div>
+    <div style="margin-bottom:6px">
+      <span class="book-status status-${book.status}" style="font-size:0.75rem">${book.status.charAt(0).toUpperCase()+book.status.slice(1)}</span>
+      <span class="book-genre-badge" style="position:static;display:inline-block;margin-left:8px">${book.genre}</span>
+    </div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:600;margin-bottom:4px;margin-top:10px">${book.title}</div>
+    <div style="color:var(--text-dim);margin-bottom:6px">${book.author}</div>
+    <div style="font-size:0.8rem;color:var(--text-faint);margin-bottom:16px">Condition: <span style="color:var(--amber)">${book.condition}</span></div>
+    <p style="font-size:0.9rem;color:var(--text-dim);line-height:1.6;margin-bottom:20px">${book.desc}</p>
+    <div style="display:flex;align-items:center;gap:10px;padding:14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+      <div class="owner-avatar" style="width:40px;height:40px;font-size:0.9rem">${initials(owner.name)}</div>
+      <div>
+        <div style="font-weight:600">${owner.name}</div>
+        <div style="font-size:0.78rem;color:var(--text-dim)">${userTrades(owner.id).length} trades completed ${rating ? '· ⭐ '+rating : ''}</div>
+      </div>
+    </div>
+    ${!isOwnBook && book.status === 'available' && myAvailBooks.length ? `
+      <div style="margin-top:20px">
+        <p style="font-size:0.82rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px">Offer one of your books in exchange:</p>
+        <div class="offer-book-picker" id="offer-picker">
+          ${myAvailBooks.map(b => `
+            <div class="offer-book-option" id="offer-opt-${b.id}" onclick="selectOffer('${b.id}')">
+              <span style="font-size:1.4rem">${b.emoji}</span>
+              <div>
+                <div style="font-size:0.88rem;font-weight:600">${b.title}</div>
+                <div style="font-size:0.75rem;color:var(--text-dim)">${b.author} · ${b.condition}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : (!isOwnBook && book.status === 'available' && !myAvailBooks.length ? `
+      <p style="margin-top:20px;color:var(--text-faint);font-size:0.88rem">You have no available books to offer. <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="closeModal('book-detail-modal');openAddBookModal()">Add one +</button></p>
+    ` : '')}
+  `;
+
+  const footer = document.getElementById('book-detail-footer');
+  pendingOfferBookId = null;
+
+  if (isOwnBook) {
+    footer.innerHTML = `<button class="btn btn-ghost" onclick="closeModal('book-detail-modal')">Close</button>`;
+  } else if (book.status === 'available') {
+    footer.innerHTML = `
+      <button class="btn btn-ghost" onclick="closeModal('book-detail-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="sendTradeRequest('${book.id}')">📤 Send Trade Request</button>
+    `;
+  } else {
+    footer.innerHTML = `<button class="btn btn-ghost" onclick="closeModal('book-detail-modal')">Close</button>`;
+  }
+
+  openModal('book-detail-modal');
+}
+
+function selectOffer(bookId) {
+  pendingOfferBookId = bookId;
+  document.querySelectorAll('.offer-book-option').forEach(el => el.classList.remove('selected'));
+  document.getElementById('offer-opt-'+bookId)?.classList.add('selected');
+}
+
+function sendTradeRequest(wantedBookId) {
+  if (!pendingOfferBookId) { toast('Please select a book to offer', 'error'); return; }
+  const wanted = DB.books.find(b => b.id === wantedBookId);
+  const offered = DB.books.find(b => b.id === pendingOfferBookId);
+
+  // Check no duplicate
+  const dup = DB.tradeRequests.find(r =>
+    r.fromUser === currentUser.id && r.wantedBookId === wantedBookId && r.status === 'pending'
+  );
+  if (dup) { toast('You already sent a request for this book', 'error'); return; }
+
+  DB.tradeRequests.push({
+    id: 'tr' + Date.now(),
+    fromUser: currentUser.id,
+    toUser: wanted.owner,
+    offeredBookId: pendingOfferBookId,
+    wantedBookId,
+    status: 'pending',
+    createdAt: new Date().toLocaleDateString()
+  });
+
+  closeModal('book-detail-modal');
+  toast(`Trade request sent to ${DB.users[wanted.owner].name}!`, 'success');
+  updateNotifDot();
+}
+
+//  MY BOOKS
+
+function renderMyBooks() {
+  const books = myBooks(currentUser.id);
+  const grid = document.getElementById('my-books-grid');
+
+  if (!books.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📚</div><p>You haven\'t listed any books yet.</p></div>';
+  } else {
+    grid.innerHTML = books.map(b => `
+      <div class="book-card">
+        <div class="book-cover" style="background:${coverBg(b.genre)}">
+          ${b.emoji}
+          <div class="book-genre-badge">${b.genre}</div>
+        </div>
+        <div class="book-info">
+          <div class="book-title">${b.title}</div>
+          <div class="book-author">${b.author}</div>
+          <div class="book-status status-${b.status}">${b.status.charAt(0).toUpperCase()+b.status.slice(1)}</div>
+          <div style="margin-top:10px">
+            <button class="btn btn-danger btn-sm" style="width:100%" onclick="removeBook('${b.id}')">Remove</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Incoming trade requests
+  const incoming = DB.tradeRequests.filter(r => r.toUser === currentUser.id && r.status === 'pending');
+  const list = document.getElementById('trade-requests-list');
+
+  if (!incoming.length) {
+    list.innerHTML = '<div class="empty-state" style="padding:30px 20px"><div class="empty-icon">📭</div><p>No pending trade requests.</p></div>';
+  } else {
+    list.innerHTML = incoming.map(r => {
+      const from = DB.users[r.fromUser];
+      const offered = DB.books.find(b => b.id === r.offeredBookId);
+      const wanted  = DB.books.find(b => b.id === r.wantedBookId);
+      return `
+        <div class="trade-request-card">
+          <div class="trade-book-mini">
+            <span class="trade-book-emoji">${offered?.emoji || '📖'}</span>
+            <div class="trade-book-details">
+              <div class="ttl">${offered?.title || 'Unknown'}</div>
+              <div class="sub">from <strong>${from.name}</strong></div>
+            </div>
+          </div>
+          <div class="trade-arrow">⇄</div>
+          <div class="trade-book-mini">
+            <span class="trade-book-emoji">${wanted?.emoji || '📖'}</span>
+            <div class="trade-book-details">
+              <div class="ttl">${wanted?.title || 'Unknown'}</div>
+              <div class="sub">your book</div>
+            </div>
+          </div>
+          <div class="trade-actions">
+            <button class="btn btn-sm" style="background:rgba(39,174,96,0.15);border:1px solid rgba(39,174,96,0.3);color:#6fcf97" onclick="acceptTrade('${r.id}')">✓ Accept</button>
+            <button class="btn btn-danger btn-sm" onclick="rejectTrade('${r.id}')">✕</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  updateNotifDot();
+}
+
+function removeBook(id) {
+  DB.books = DB.books.filter(b => b.id !== id);
+  renderMyBooks();
+  toast('Book removed');
+}
+
+function openAddBookModal() {
+  document.getElementById('book-title').value = '';
+  document.getElementById('book-author').value = '';
+  document.getElementById('book-desc').value = '';
+  openModal('add-book-modal');
+}
+
+function doAddBook() {
+  const title = document.getElementById('book-title').value.trim();
+  const author = document.getElementById('book-author').value.trim();
+  const genre = document.getElementById('book-genre').value;
+  const condition = document.getElementById('book-condition').value;
+  const desc = document.getElementById('book-desc').value.trim();
+
+  if (!title || !author) { toast('Title and author are required', 'error'); return; }
+
+  const emojiMap = { Fiction:'📖', 'Non-Fiction':'📰', Mystery:'🔍', 'Science Fiction':'🚀', Fantasy:'🧙', Romance:'💕', History:'🏛️', 'Self-Help':'💡' };
+
+  DB.books.push({
+    id: 'b' + DB.nextBookId++,
+    owner: currentUser.id,
+    title, author, genre, condition, desc,
+    emoji: emojiMap[genre] || '📚',
+    status: 'available'
+  });
+
+  closeModal('add-book-modal');
+  renderMyBooks();
+  toast('Book listed!', 'success');
+}
+
+//  TRADE ACTIONS
+
+function acceptTrade(requestId) {
+  const req = DB.tradeRequests.find(r => r.id === requestId);
+  if (!req) return;
+
+  req.status = 'accepted';
+
+  // Update book statuses
+  const offeredBook = DB.books.find(b => b.id === req.offeredBookId);
+  const wantedBook  = DB.books.find(b => b.id === req.wantedBookId);
+  if (offeredBook) { offeredBook.status = 'traded'; offeredBook.owner = req.toUser; }
+  if (wantedBook)  { wantedBook.status  = 'traded'; wantedBook.owner  = req.fromUser; }
+
+  // Create completed trade record
+  const trade = {
+    id: 'trade' + DB.nextTradeId++,
+    userA: req.fromUser,
+    userB: req.toUser,
+    bookA: req.offeredBookId,
+    bookB: req.wantedBookId,
+    date: new Date().toLocaleDateString(),
+    ratingByA: null,
+    ratingByB: null,
+    requestId
+  };
+  DB.trades.push(trade);
+
+  renderMyBooks();
+  toast(`Trade accepted! You got "${offeredBook?.title}"`, 'success');
+}
+
+function rejectTrade(requestId) {
+  const req = DB.tradeRequests.find(r => r.id === requestId);
+  if (req) req.status = 'rejected';
+  renderMyBooks();
+  toast('Trade request declined');
+}
+
+function updateNotifDot() {
+  const pending = DB.tradeRequests.filter(r => r.toUser === currentUser?.id && r.status === 'pending');
+  document.getElementById('requests-dot').style.display = pending.length ? '' : 'none';
+}
+
+//  TRADES / RATINGS
+
+function renderTrades() {
+  const trades = userTrades(currentUser.id);
+  const list = document.getElementById('trades-list');
+
+  if (!trades.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🤝</div><p>No completed trades yet. Browse books and send a trade request!</p></div>';
+    return;
+  }
+
+  list.innerHTML = trades.map(t => {
+    const iAmA = t.userA === currentUser.id;
+    const partner = DB.users[iAmA ? t.userB : t.userA];
+    const myBook  = DB.books.find(b => b.id === (iAmA ? t.bookA : t.bookB));
+    const theirBook = DB.books.find(b => b.id === (iAmA ? t.bookB : t.bookA));
+    const myRating = iAmA ? t.ratingByA : t.ratingByB;
+    const theirRating = iAmA ? t.ratingByB : t.ratingByA;
+    const partnerRatingObj = DB.ratings.find(r => r.tradeId === t.id && r.ratedBy === (iAmA ? t.userA : t.userB));
+
+    return `
+      <div class="trade-history-card">
+        <div class="trade-history-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="owner-avatar" style="width:36px;height:36px;background:var(--amber)">${initials(partner.name)}</div>
+            <div>
+              <div style="font-weight:600">${partner.name}</div>
+              <div style="font-size:0.75rem;color:var(--text-dim)">${t.date}</div>
+            </div>
+          </div>
+          <span class="trade-completed-badge">Completed</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface2);border-radius:6px;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div style="flex:1;min-width:100px">
+            <div style="font-size:0.7rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">You gave</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:1.4rem">${myBook?.emoji||'📖'}</span>
+              <span style="font-size:0.88rem;font-weight:500">${myBook?.title||'Unknown'}</span>
+            </div>
+          </div>
+          <span style="color:var(--amber);font-size:1.4rem">⇄</span>
+          <div style="flex:1;min-width:100px">
+            <div style="font-size:0.7rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">You received</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:1.4rem">${theirBook?.emoji||'📖'}</span>
+              <span style="font-size:0.88rem;font-weight:500">${theirBook?.title||'Unknown'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          ${partnerRatingObj
+            ? `<div style="display:flex;align-items:center;gap:6px;font-size:0.82rem;color:var(--text-dim)">Your rating: ${starsHTML(partnerRatingObj.stars)}</div>`
+            : `<button class="btn btn-ghost btn-sm" onclick="openRateModal('${t.id}', '${partner.id}', '${partner.name}')">⭐ Rate ${partner.name}</button>`
+          }
+          ${theirRating ? `<div style="font-size:0.78rem;color:var(--text-dim)">They rated you: ${starsHTML(theirRating.stars||0)}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openRateModal(tradeId, userId, userName) {
+  pendingRateTrade = { tradeId, userId };
+  pendingRating = 0;
+  document.getElementById('rate-modal-title').textContent = `⭐ Rate ${userName}`;
+  document.getElementById('rate-note').value = '';
+  document.querySelectorAll('#rate-stars .star-btn').forEach(b => b.classList.remove('filled'));
+  openModal('rate-modal');
+}
+
+function setRating(n) {
+  pendingRating = n;
+  document.querySelectorAll('#rate-stars .star-btn').forEach(b => {
+    b.classList.toggle('filled', parseInt(b.dataset.v) <= n);
+  });
+}
+
+function submitRating() {
+  if (!pendingRating) { toast('Please select a star rating', 'error'); return; }
+  const note = document.getElementById('rate-note').value.trim();
+  const trade = DB.trades.find(t => t.id === pendingRateTrade.tradeId);
+
+  DB.ratings.push({
+    tradeId: pendingRateTrade.tradeId,
+    ratedBy: currentUser.id,
+    ratedUser: pendingRateTrade.userId,
+    stars: pendingRating,
+    note
+  });
+
+  // Mark rating on trade
+  if (trade) {
+    if (trade.userA === currentUser.id) trade.ratingByA = { stars: pendingRating, note };
+    else trade.ratingByB = { stars: pendingRating, note };
+  }
+
+  closeModal('rate-modal');
+  renderTrades();
+  toast('Rating submitted! Thanks for the feedback', 'success');
+}
+
+//  PROFILE
+
+function renderProfile() {
+  const user = currentUser;
+  const trades = userTrades(user.id);
+  const books  = myBooks(user.id);
+  const rating = avgRating(user.id);
+  const reviews = DB.ratings.filter(r => r.ratedUser === user.id);
+
+  document.getElementById('profile-content').innerHTML = `
+    <div class="profile-hero">
+      <div class="profile-avatar-big">${initials(user.name)}</div>
+      <div>
+        <div class="profile-name">${user.name}</div>
+        <div style="font-size:0.82rem;color:var(--text-dim);margin-top:2px">@${user.id} · Member since ${user.joined}</div>
+        ${rating ? `<div style="margin-top:8px;font-size:0.9rem">⭐ <strong style="color:var(--amber)">${rating}</strong> avg rating</div>` : '<div style="margin-top:8px;font-size:0.82rem;color:var(--text-faint)">No ratings yet</div>'}
+        <div class="profile-stats">
+          <div class="profile-stat"><div class="num">${books.length}</div><div class="lbl">Books</div></div>
+          <div class="profile-stat"><div class="num">${trades.length}</div><div class="lbl">Trades</div></div>
+          <div class="profile-stat"><div class="num">${reviews.length}</div><div class="lbl">Reviews</div></div>
+        </div>
+      </div>
+    </div>
+
+    ${reviews.length ? `
+      <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:600;margin-bottom:16px">Reviews from traders</h3>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${reviews.map(r => {
+          const reviewer = DB.users[r.ratedBy];
+          return `
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                <div class="owner-avatar" style="width:30px;height:30px;font-size:0.7rem">${initials(reviewer.name)}</div>
+                <span style="font-weight:500;font-size:0.88rem">${reviewer.name}</span>
+                <span style="margin-left:auto">${starsHTML(r.stars)}</span>
+              </div>
+              ${r.note ? `<p style="font-size:0.85rem;color:var(--text-dim);line-height:1.5">"${r.note}"</p>` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    ` : ''}
+  `;
+}
+
+//  CLOSE MODALS ON BACKDROP CLICK
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+//  MOBILE NAV (bottom bar fallback)
+
+// Enter key on login
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+</script>
+</body>
+</html>
